@@ -1,119 +1,57 @@
 import sys
-import os
-from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QLabel, QSlider, QSpinBox, QProgressBar)
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from recorder import FocusRecorder
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel
+from PyQt6.QtCore import Qt
+from recorder import TelemetryRecorder
+from editor_ui import FocusEditor # Importamos tu nueva interfaz
 
-os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-
-class RenderThread(QThread):
-    progress = pyqtSignal(int)
-    finished = pyqtSignal()
-
-    def __init__(self, recorder):
-        super().__init__()
-        self.recorder = recorder
-
-    def run(self):
-        self.recorder.stop(callback_progress=self.progress.emit)
-        self.finished.emit()
-
-class FocusApp(QWidget):
+class LauncherApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.recorder = None
+        self.recorder = TelemetryRecorder()
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("FocusSee Control Panel")
+        self.setWindowTitle("FocusSee Suite")
         self.setFixedWidth(300)
-        self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
-
+        
         layout = QVBoxLayout()
-
-        # --- AJUSTE DE ZOOM ---
-        layout.addWidget(QLabel("Nivel de Zoom:"))
-        self.zoom_spin = QSpinBox()
-        self.zoom_spin.setRange(10, 40) # Representa 1.0 a 4.0
-        self.zoom_spin.setValue(18)
-        self.zoom_spin.setPrefix("x ")
-        self.zoom_spin.setSingleStep(2)
-        layout.addWidget(self.zoom_spin)
-
-        # --- AJUSTE DE SUAVIDAD ---
-        layout.addWidget(QLabel("Suavidad de Cámara (Inercia):"))
-        self.smooth_slider = QSlider(Qt.Orientation.Horizontal)
-        self.smooth_slider.setRange(1, 20)
-        self.smooth_slider.setValue(5) # 0.05
-        layout.addWidget(self.smooth_slider)
-
-        # --- AJUSTE DE FPS ---
-        layout.addWidget(QLabel("FPS del Video Final:"))
-        self.fps_spin = QSpinBox()
-        self.fps_spin.setRange(24, 60)
-        self.fps_spin.setValue(60)
-        layout.addWidget(self.fps_spin)
-
-        # --- ESTADO Y PROGRESO ---
-        self.status = QLabel("Listo")
+        
+        self.status = QLabel("¿Qué deseas hacer?")
         self.status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.status)
 
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
+        # Botón para Grabar
+        self.btn_record = QPushButton("🔴 INICIAR GRABADOR")
+        self.btn_record.clicked.connect(self.toggle_record)
+        self.btn_record.setStyleSheet("height: 40px; background: #28a745; color: white;")
+        layout.addWidget(self.btn_record)
 
-        # --- BOTÓN PRINCIPAL ---
-        self.btn = QPushButton("INICIAR GRABACIÓN")
-        self.btn.clicked.connect(self.toggle)
-        self.btn.setStyleSheet("height: 50px; background: #28a745; color: white; font-weight: bold;")
-        layout.addWidget(self.btn)
+        # Botón para Editar
+        self.btn_edit = QPushButton("🎬 ABRIR EDITOR")
+        self.btn_edit.clicked.connect(self.open_editor)
+        self.btn_edit.setStyleSheet("height: 40px; background: #007bff; color: white;")
+        layout.addWidget(self.btn_edit)
 
         self.setLayout(layout)
 
-    def get_config(self):
-        return {
-            'zoom': self.zoom_spin.value() / 10.0,
-            'suavidad': self.smooth_slider.value() / 100.0,
-            'fps': self.fps_spin.value()
-        }
-
-    def toggle(self):
-        if self.recorder is None or not self.recorder.is_recording:
-            # Bloquear UI mientras graba
-            self.zoom_spin.setEnabled(False)
-            self.smooth_slider.setEnabled(False)
-            self.fps_spin.setEnabled(False)
-            
-            self.recorder = FocusRecorder(config=self.get_config())
+    def toggle_record(self):
+        if not self.recorder.is_recording:
             self.recorder.start()
-            self.btn.setText("DETENER Y PROCESAR")
-            self.btn.setStyleSheet("background: #dc3545; color: white;")
-            self.status.setText("🔴 Grabando...")
+            self.btn_record.setText("⏹️ DETENER GRABACIÓN")
+            self.status.setText("Capturando telemetría...")
         else:
-            self.btn.setEnabled(False)
-            self.status.setText("⚙️ Renderizando video...")
-            self.progress_bar.setVisible(True)
-            
-            # Usamos un hilo para no congelar la ventana al renderizar
-            self.render_thread = RenderThread(self.recorder)
-            self.render_thread.progress.connect(self.progress_bar.setValue)
-            self.render_thread.finished.connect(self.on_finished)
-            self.render_thread.start()
+            self.recorder.stop()
+            self.btn_record.setText("🔴 INICIAR GRABADOR")
+            self.status.setText("Grabación guardada.")
 
-    def on_finished(self):
-        self.btn.setEnabled(True)
-        self.btn.setText("INICIAR GRABACIÓN")
-        self.btn.setStyleSheet("background: #28a745; color: white;")
-        self.status.setText("✅ Video Guardado")
-        self.progress_bar.setVisible(False)
-        self.zoom_spin.setEnabled(True)
-        self.smooth_slider.setEnabled(True)
-        self.fps_spin.setEnabled(True)
+    def open_editor(self):
+        # Cerramos esta ventana y abrimos el editor
+        self.editor_window = FocusEditor()
+        self.editor_window.show()
+        self.close()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ex = FocusApp()
-    ex.show()
+    launcher = LauncherApp()
+    launcher.show()
     sys.exit(app.exec())
