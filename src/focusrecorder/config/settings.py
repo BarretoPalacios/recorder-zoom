@@ -11,13 +11,19 @@ class RecordingSettings:
     output_dir: Path
     custom_name: str = ""
     audio: bool = False
+    audio_mode: str = "mic"
     audio_device: int | None = None
+    pause_hotkey: str = "f7"
+    stop_hotkey: str = "f10"
+    quality: str = "high"
+    render_quality: str = "normal"
 
 
 @dataclass(frozen=True)
 class UISettings:
     """Settings for the user interface state."""
     export_mode: str  # "full", "tiktok", "both"
+    preview_enabled: bool = True
 
 
 @dataclass(frozen=True)

@@ -69,7 +69,7 @@ def test_main_toggle_starts_recording(qtbot):
 
 def test_main_render_thread():
     mock_presenter = MagicMock()
-    mock_presenter.stop_recording.return_value = StopRecordingResult(
+    mock_presenter.render_prepared_recording.return_value = StopRecordingResult(
         "test.mp4",
         "",
     )
@@ -79,7 +79,7 @@ def test_main_render_thread():
     thread.finished = MagicMock()
 
     thread.run()
-    mock_presenter.stop_recording.assert_called_once()
+    mock_presenter.render_prepared_recording.assert_called_once()
     thread.finished.emit.assert_called_with(StopRecordingResult("test.mp4", ""))
 
 

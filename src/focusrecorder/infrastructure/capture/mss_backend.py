@@ -9,14 +9,27 @@ class MssCaptureBackend(CaptureBackend):
     def __init__(self):
         self.sct = None
         self.monitor = None
+        self._supports_native_cursor = False
+
+    def _create_mss(self):
+        try:
+            sct = mss.mss(with_cursor=True)
+            self._supports_native_cursor = True
+            return sct
+        except TypeError:
+            self._supports_native_cursor = False
+            return mss.mss()
+        except Exception:
+            self._supports_native_cursor = False
+            return mss.mss()
 
     def get_screen_size(self) -> tuple[int, int]:
-        with mss.mss() as sct:
+        with self._create_mss() as sct:
             monitor = sct.monitors[0]
             return monitor["width"], monitor["height"]
 
     def start(self):
-        self.sct = mss.mss()
+        self.sct = self._create_mss()
         self.monitor = self.sct.monitors[0]
 
     def validate(self):

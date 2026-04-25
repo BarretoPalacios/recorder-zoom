@@ -43,8 +43,8 @@ def test_recorder_full_rendering_workflow(monkeypatch, tmp_path):
             with open(self.filename, 'w') as f:
                 f.write("mockvideo")
 
-    monkeypatch.setattr(cv2, "VideoWriter", FakeVideoWriter)
-    monkeypatch.setattr(cv2, "VideoWriter_fourcc", lambda *args: "mp4v")
+    from focusrecorder.infrastructure.rendering.adaptive_renderer import AdaptiveVideoRenderer
+    monkeypatch.setattr(AdaptiveVideoRenderer, "_create_writer", staticmethod(lambda filename, fps, frame_size: FakeVideoWriter(filename, "mp4v", fps, frame_size)))
 
     emitted_progress = []
     
@@ -75,8 +75,8 @@ def test_recorder_full_various_modes(monkeypatch, tmp_path):
         def release(self):
             pass
     
-    monkeypatch.setattr(cv2, "VideoWriter", MockVideoWriter)
-    monkeypatch.setattr(cv2, "VideoWriter_fourcc", lambda *args: "mp4v")    
+    from focusrecorder.infrastructure.rendering.adaptive_renderer import AdaptiveVideoRenderer
+    monkeypatch.setattr(AdaptiveVideoRenderer, "_create_writer", staticmethod(lambda filename, fps, frame_size: MockVideoWriter(filename, "mp4v", fps, frame_size)))
     
     rec.raw_data = []
     rec._render_adaptive_video(None, "both")
@@ -141,8 +141,7 @@ def test_renderer_synchronizes_low_framerate_to_target_fps(monkeypatch):
         def write(self, frame): written_frames.append(frame)
         def release(self): pass
         
-    monkeypatch.setattr(cv2, "VideoWriter", MockVideoWriter)
-    monkeypatch.setattr(cv2, "VideoWriter_fourcc", lambda *args: "mp4v")
+    monkeypatch.setattr(AdaptiveVideoRenderer, "_create_writer", staticmethod(lambda filename, fps, frame_size: MockVideoWriter(filename, "mp4v", fps, frame_size)))
     monkeypatch.setattr(renderer_module, "reencode_to_h264", lambda x: None)
     
     renderer = AdaptiveVideoRenderer()
@@ -191,9 +190,8 @@ def test_renderer_from_file_synchronizes_low_framerate_to_target_fps(monkeypatch
         def isOpened(self): return True
         def release(self): pass
 
-    monkeypatch.setattr(cv2, "VideoWriter", MockVideoWriter)
+    monkeypatch.setattr(AdaptiveVideoRenderer, "_create_writer", staticmethod(lambda filename, fps, frame_size: MockVideoWriter(filename, "mp4v", fps, frame_size)))
     monkeypatch.setattr(cv2, "VideoCapture", MockVideoCapture)
-    monkeypatch.setattr(cv2, "VideoWriter_fourcc", lambda *args: "mp4v")
     monkeypatch.setattr(renderer_module, "reencode_to_h264", lambda x: None)
     
     renderer = AdaptiveVideoRenderer()
@@ -215,3 +213,50 @@ def test_renderer_from_file_synchronizes_low_framerate_to_target_fps(monkeypatch
     )
     
     assert len(written_frames) == 75, f"Se esperaban 75 frames, se obtuvieron {len(written_frames)}"
+
+
+def test_create_writer_falls_back_when_ffmpeg_encoder_fails(monkeypatch):
+    from focusrecorder.infrastructure.rendering import adaptive_renderer as renderer_module
+
+    attempts = []
+
+    class FailingFFmpegWriter:
+        def __init__(self, filename, fps, frame_size, encoder):
+            attempts.append(encoder)
+            if encoder != "libx264":
+                raise renderer_module.FFmpegWriterError("encoder no disponible")
+            self.encoder = encoder
+
+    class FakeCvWriter:
+        def __init__(self, filename, fourcc, fps, frame_size):
+            self.filename = filename
+
+    monkeypatch.setattr(renderer_module, "FFmpegVideoWriter", FailingFFmpegWriter)
+    monkeypatch.setattr(renderer_module, "get_candidate_video_encoders", lambda: ["h264_nvenc", "h264_qsv", "libx264"])
+    monkeypatch.setattr(renderer_module, "can_encode_with_ffmpeg", lambda encoder, width, height, fps: True)
+    monkeypatch.setattr(cv2, "VideoWriter", FakeCvWriter)
+
+    writer = renderer_module.AdaptiveVideoRenderer._create_writer("out.mp4", 60, (1920, 1080))
+
+    assert isinstance(writer, FailingFFmpegWriter)
+    assert attempts == ["h264_nvenc", "h264_qsv", "libx264"]
+
+
+def test_create_writer_skips_unavailable_ffmpeg_encoders(monkeypatch):
+    from focusrecorder.infrastructure.rendering import adaptive_renderer as renderer_module
+
+    attempts = []
+
+    class FakeFFmpegWriter:
+        def __init__(self, filename, fps, frame_size, encoder):
+            attempts.append(encoder)
+            self.encoder = encoder
+
+    monkeypatch.setattr(renderer_module, "FFmpegVideoWriter", FakeFFmpegWriter)
+    monkeypatch.setattr(renderer_module, "get_candidate_video_encoders", lambda: ["h264_nvenc", "libx264"])
+    monkeypatch.setattr(renderer_module, "can_encode_with_ffmpeg", lambda encoder, width, height, fps: encoder == "libx264")
+
+    writer = renderer_module.AdaptiveVideoRenderer._create_writer("out.mp4", 60, (1920, 1080))
+
+    assert isinstance(writer, FakeFFmpegWriter)
+    assert attempts == ["libx264"]

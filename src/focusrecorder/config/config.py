@@ -29,7 +29,7 @@ def get_default_recording_settings() -> RecordingSettings:
 
 def get_default_ui_settings() -> UISettings:
     """Get default UI settings using constants."""
-    return UISettings(export_mode=DEFAULT_EXPORT_MODE)
+    return UISettings(export_mode=DEFAULT_EXPORT_MODE, preview_enabled=True)
 
 
 def load_user_preferences_as_settings() -> UserPreferences:
@@ -42,9 +42,17 @@ def load_user_preferences_as_settings() -> UserPreferences:
         fps=prefs["fps"],
         output_dir=Path(prefs["output_dir"]),
         audio=prefs.get("audio", False),
+        audio_mode=prefs.get("audio_mode", "mic"),
+        pause_hotkey=prefs.get("pause_hotkey", "f7"),
+        stop_hotkey=prefs.get("stop_hotkey", "f10"),
+        quality=prefs.get("quality", "high"),
+        render_quality=prefs.get("render_quality", "normal"),
     )
     
-    ui_settings = UISettings(export_mode=prefs["export_mode"])
+    ui_settings = UISettings(
+        export_mode=prefs["export_mode"],
+        preview_enabled=prefs.get("preview_enabled", True),
+    )
     
     return UserPreferences(recording=recording_settings, ui=ui_settings)
 
@@ -57,7 +65,13 @@ def save_user_preferences_from_settings(preferences: UserPreferences) -> None:
         "fps": preferences.recording.fps,
         "output_dir": str(preferences.recording.output_dir),
         "export_mode": preferences.ui.export_mode,
+        "preview_enabled": preferences.ui.preview_enabled,
         "audio": preferences.recording.audio,
+        "audio_mode": preferences.recording.audio_mode,
+        "pause_hotkey": preferences.recording.pause_hotkey,
+        "stop_hotkey": preferences.recording.stop_hotkey,
+        "quality": preferences.recording.quality,
+        "render_quality": preferences.recording.render_quality,
     }
     save_user_preferences(prefs_dict)
 
@@ -75,6 +89,11 @@ def with_recording_overrides(
     suavidad: float | None = None,
     fps: int | None = None,
     audio: bool | None = None,
+    audio_mode: str | None = None,
+    pause_hotkey: str | None = None,
+    stop_hotkey: str | None = None,
+    quality: str | None = None,
+    render_quality: str | None = None,
 ) -> RecordingSettings:
     """Create a new RecordingSettings with overridden values."""
     updates = {}
@@ -86,6 +105,16 @@ def with_recording_overrides(
         updates["fps"] = fps
     if audio is not None:
         updates["audio"] = audio
+    if audio_mode is not None:
+        updates["audio_mode"] = audio_mode
+    if pause_hotkey is not None:
+        updates["pause_hotkey"] = pause_hotkey
+    if stop_hotkey is not None:
+        updates["stop_hotkey"] = stop_hotkey
+    if quality is not None:
+        updates["quality"] = quality
+    if render_quality is not None:
+        updates["render_quality"] = render_quality
     return replace(settings, **updates)
 
 
@@ -111,8 +140,18 @@ def coerce_recording_settings(config) -> RecordingSettings:
             updates["audio"] = config["audio"]
         if "audio_device" in config:
             updates["audio_device"] = config["audio_device"]
+        if "audio_mode" in config:
+            updates["audio_mode"] = config["audio_mode"]
+        if "pause_hotkey" in config:
+            updates["pause_hotkey"] = config["pause_hotkey"]
+        if "stop_hotkey" in config:
+            updates["stop_hotkey"] = config["stop_hotkey"]
         if "custom_name" in config:
             updates["custom_name"] = config["custom_name"]
+        if "quality" in config:
+            updates["quality"] = config["quality"]
+        if "render_quality" in config:
+            updates["render_quality"] = config["render_quality"]
         return replace(settings, **updates)
 
     raise TypeError("config must be None, a dict, or RecordingSettings")

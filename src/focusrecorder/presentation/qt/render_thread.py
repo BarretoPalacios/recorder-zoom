@@ -11,7 +11,7 @@ class RenderThread(QThread):
         self.export_mode = export_mode
 
     def run(self):
-        result = self.presenter.stop_recording(
+        result = self.presenter.render_prepared_recording(
             self.export_mode,
             callback_progress=self.progress.emit,
         )

@@ -3,8 +3,8 @@ import sys
 
 from PyQt6.QtWidgets import QApplication
 
-from .presentation.qt.main_window import FocusApp
 from .presentation.qt.render_thread import RenderThread
+from .presentation.qt.studio_window import FocusApp
 
 os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 

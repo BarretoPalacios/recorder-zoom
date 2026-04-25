@@ -1,9 +1,9 @@
 """Application constants for default configuration values."""
 
 # Recording defaults
-DEFAULT_ZOOM: float = 1.8
+DEFAULT_ZOOM: float = 1.0
 DEFAULT_SUAVIDAD: float = 0.05
-DEFAULT_FPS: int = 60
+DEFAULT_FPS: int = 30
 
 # UI defaults
 DEFAULT_EXPORT_MODE: str = "full"  # "full", "tiktok", "both"
@@ -31,7 +31,7 @@ UI_DEFAULT_SUAVIDAD: int = int(DEFAULT_SUAVIDAD * 100)  # 5
 # FPS no necesita conversión
 UI_MIN_FPS: int = MIN_FPS  # 24
 UI_MAX_FPS: int = MAX_FPS  # 60
-UI_DEFAULT_FPS: int = DEFAULT_FPS  # 60
+UI_DEFAULT_FPS: int = DEFAULT_FPS  # 30
 
 # File settings
 CONFIG_FILENAME: str = "focus_recorder_preferences.json"

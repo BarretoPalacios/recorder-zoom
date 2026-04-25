@@ -5,7 +5,7 @@ from focusrecorder.application.dto import StopRecordingResult
 
 def test_render_thread_full_mode_emits_paths(qtbot):
     presenter = MagicMock()
-    presenter.stop_recording.return_value = StopRecordingResult(
+    presenter.render_prepared_recording.return_value = StopRecordingResult(
         "C:/tmp/res.mp4",
         "",
     )
@@ -22,7 +22,7 @@ def test_render_thread_full_mode_emits_paths(qtbot):
 
 def test_render_thread_both_mode_emits_both_paths(qtbot):
     presenter = MagicMock()
-    presenter.stop_recording.return_value = StopRecordingResult(
+    presenter.render_prepared_recording.return_value = StopRecordingResult(
         "C:/tmp/res.mp4",
         "C:/tmp/res_tiktok.mp4",
     )

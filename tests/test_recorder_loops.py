@@ -86,3 +86,30 @@ def test_record_loop_linux_branch(monkeypatch, tmp_path):
 
     assert len(rec.session.mouse_data) == 1
 
+
+def test_paused_session_does_not_capture_new_frames(monkeypatch, tmp_path):
+    monkeypatch.setattr(recorder_module.Path, "home", lambda: tmp_path)
+
+    rec = FocusRecorder(config={})
+    rec.start_time = time.perf_counter()
+    rec.is_recording = True
+    rec.session.pause(now=rec.start_time)
+
+    mock_backend = MagicMock()
+    mock_backend.capture_frame.side_effect = AssertionError("No deberia capturar en pausa")
+    rec.capture_backend = mock_backend
+    rec.mouse_provider = MagicMock()
+
+    calls = {"count": 0}
+
+    def fake_sleep(_):
+        calls["count"] += 1
+        if calls["count"] >= 2:
+            rec.is_recording = False
+
+    monkeypatch.setattr(time, "sleep", fake_sleep)
+    rec._record_loop()
+
+    assert mock_backend.start.called
+    assert mock_backend.stop.called
+    assert len(rec.session.mouse_data) == 0
